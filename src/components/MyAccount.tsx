@@ -67,6 +67,8 @@ export default function MyAccount() {
   }
 
   const moduleLabels = user.modules.map((m) => MODULE_LABELS[m]);
+  // An administrator's access isn't assigned by anyone else, so the card doesn't apply to them.
+  const showAccessProfile = user.profile.code !== "ADMIN";
 
   return (
     <div className="grid items-start gap-4 lg:grid-cols-2">
@@ -103,26 +105,28 @@ export default function MyAccount() {
       </Card>
 
       <div className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Perfil de acceso</CardTitle>
-            <CardDescription>Lo asigna un administrador y define qué módulos puedes usar.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="font-medium">{user.profile.name}</p>
-            <div className="flex flex-wrap gap-1.5">
-              {moduleLabels.length > 0 ? (
-                moduleLabels.map((label) => (
-                  <Badge key={label} variant="secondary">
-                    {label}
-                  </Badge>
-                ))
-              ) : (
-                <span className="text-muted-foreground">Sin módulos habilitados</span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {showAccessProfile && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Perfil de acceso</CardTitle>
+              <CardDescription>Lo asigna un administrador y define qué módulos puedes usar.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="font-medium">{user.profile.name}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {moduleLabels.length > 0 ? (
+                  moduleLabels.map((label) => (
+                    <Badge key={label} variant="secondary">
+                      {label}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-muted-foreground">Sin módulos habilitados</span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

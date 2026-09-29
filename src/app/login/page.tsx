@@ -25,7 +25,8 @@ function LoginForm() {
   const { login } = useAuth();
   const { loading } = useRedirectIfAuthenticated();
 
-  const justRegistered = searchParams.get("registered") === "1";
+  const registered = searchParams.get("registered");
+  const justRegistered = registered === "1" || registered === "company";
   const passwordReset = searchParams.get("reset") === "1";
 
   const [email, setEmail] = useState("");
@@ -91,8 +92,8 @@ function LoginForm() {
           {justRegistered && (
             <Alert className="mb-4 border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
               <AlertDescription className="text-emerald-700 dark:text-emerald-300">
-                Cuenta creada correctamente. Revisa tu correo electrónico para verificar tu cuenta antes de iniciar
-                sesión.
+                {registered === "company" ? "Empresa creada correctamente." : "Cuenta creada correctamente."} Revisa tu
+                correo electrónico para verificar tu cuenta antes de iniciar sesión.
               </AlertDescription>
             </Alert>
           )}
@@ -155,10 +156,13 @@ function LoginForm() {
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            ¿No tienes cuenta?{" "}
+            ¿Tienes una empresa de transporte?{" "}
             <Link href="/signup" className="font-medium text-foreground hover:underline">
-              Crea una
+              Regístrala
             </Link>
+          </p>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            ¿Quieres reservar un viaje? Crea tu cuenta con el link de registro de tu empresa de transporte.
           </p>
         </CardContent>
       </Card>

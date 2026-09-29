@@ -2,8 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { authApi, type LoginPayload, type ModuleKey, type RegisterPayload, type SessionUser } from "./api";
-import { homeFor } from "./modules";
+import {
+  authApi,
+  type LoginPayload,
+  type ModuleKey,
+  type PublicCompany,
+  type RegisterCompanyPayload,
+  type RegisterPayload,
+  type SessionUser,
+} from "./api";
+import { homeFor, isHiddenModule } from "./modules";
 
 const TOKEN_STORAGE_KEY = "viajes-eventos.token";
 
@@ -13,6 +21,7 @@ type AuthContextValue = {
   loading: boolean;
   login: (payload: LoginPayload) => Promise<SessionUser>;
   register: (payload: RegisterPayload) => Promise<void>;
+  registerCompany: (payload: RegisterCompanyPayload) => Promise<PublicCompany>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   setUser: (user: SessionUser) => void;
@@ -67,6 +76,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authApi.register(payload);
   }
 
+  /** Same as register: the new administrator verifies their email, then signs in. */
+  async function registerCompany(payload: RegisterCompanyPayload) {
+    return (await authApi.registerCompany(payload)).company;
+  }
+
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     setToken(null);
@@ -86,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasModule = useCallback((module: ModuleKey) => user?.modules.includes(module) ?? false, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, refreshUser, setUser, hasModule }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, registerCompany, logout, refreshUser, setUser, hasModule }}>
       {children}
     </AuthContext.Provider>
   );
@@ -114,12 +128,13 @@ export function useRequireAuth() {
 
 /**
  * Page-level guard for a module's pages — the UI side of the API's ModuleAccess. Not logged in →
- * /login; logged in without the module → their own home (first module they do have).
+ * /login; logged in without the module, or the module's pages are hidden → their own home (first
+ * module they do have).
  */
 export function useRequireModule(module: ModuleKey) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const allowed = user?.modules.includes(module) ?? false;
+  const allowed = !isHiddenModule(module) && (user?.modules.includes(module) ?? false);
 
   useEffect(() => {
     if (loading) return;

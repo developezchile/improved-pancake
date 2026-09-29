@@ -6,7 +6,7 @@ import PageSkeleton from "@/components/PageSkeleton";
 import { useRequireModule } from "@/lib/auth-context";
 
 export default function MyBookingsPage() {
-  const { ready } = useRequireModule("EVENTS");
+  const { ready } = useRequireModule("MY_BOOKINGS");
   if (!ready) return <PageSkeleton />;
 
   return (

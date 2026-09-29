@@ -6,21 +6,23 @@ import { useState, type FormEvent } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import AccountFields, { accountPayload, EMPTY_ACCOUNT } from "@/components/AccountFields";
 import FormField from "@/components/FormField";
 import { ApiError } from "@/lib/api";
 import { useAuth, useRedirectIfAuthenticated } from "@/lib/auth-context";
 
+/**
+ * A transport company signs itself up, with its first administrator. Its clients don't sign up here:
+ * they use the company's own link (/empresa/<slug>), shown to the administrator in "Mi empresa".
+ */
 export default function SignupPage() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { registerCompany } = useAuth();
   const { loading } = useRedirectIfAuthenticated();
 
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [companySlug, setCompanySlug] = useState("");
+  const [account, setAccount] = useState(EMPTY_ACCOUNT);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -31,15 +33,12 @@ export default function SignupPage() {
     setFormError(null);
     setSubmitting(true);
     try {
-      await register({
-        username,
-        email,
-        password,
-        firstName: firstName || undefined,
-        lastName: lastName || undefined,
-        phone: phone || undefined,
+      await registerCompany({
+        ...accountPayload(account),
+        companyName,
+        companySlug: companySlug.trim() || undefined,
       });
-      router.push("/login?registered=1");
+      router.push("/login?registered=company");
     } catch (err) {
       if (err instanceof ApiError) {
         setFieldErrors(err.fieldErrors ?? {});
@@ -60,67 +59,39 @@ export default function SignupPage() {
     <div className="flex flex-1 items-center justify-center bg-zinc-50 px-4 py-10 font-sans dark:bg-black">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">Crear cuenta</CardTitle>
-          <CardDescription>Regístrate para ver eventos y reservar tu viaje en bus.</CardDescription>
+          <CardTitle className="text-xl">Registra tu empresa</CardTitle>
+          <CardDescription>
+            Crea la cuenta de tu empresa de transporte para publicar tus viajes y recibir reservas de tus clientes.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            <div className="grid grid-cols-2 gap-3">
+            <FormField
+              label="Nombre de la empresa"
+              name="companyName"
+              value={companyName}
+              onChange={setCompanyName}
+              error={fieldErrors.companyName}
+              required
+              autoComplete="organization"
+            />
+            <div className="space-y-1.5">
               <FormField
-                label="Nombre"
-                name="firstName"
-                value={firstName}
-                onChange={setFirstName}
-                autoComplete="given-name"
+                label="Link para tus clientes (opcional)"
+                name="companySlug"
+                placeholder="buses-lopez"
+                value={companySlug}
+                onChange={(v) => setCompanySlug(v.toLowerCase())}
+                error={fieldErrors.companySlug}
               />
-              <FormField
-                label="Apellido"
-                name="lastName"
-                value={lastName}
-                onChange={setLastName}
-                autoComplete="family-name"
-              />
+              <p className="text-xs text-muted-foreground">
+                Tus clientes se registran en /empresa/{companySlug.trim() || "…"}. Si lo dejas vacío, se crea a partir del
+                nombre. No se puede cambiar después.
+              </p>
             </div>
-            <FormField
-              label="Celular (opcional)"
-              name="phone"
-              type="tel"
-              inputMode="tel"
-              placeholder="+56 9 1234 5678"
-              value={phone}
-              onChange={setPhone}
-              error={fieldErrors.phone}
-              autoComplete="tel"
-            />
-            <FormField
-              label="Nombre de usuario"
-              name="username"
-              value={username}
-              onChange={setUsername}
-              error={fieldErrors.username}
-              required
-              autoComplete="username"
-            />
-            <FormField
-              label="Correo electrónico"
-              name="email"
-              type="email"
-              value={email}
-              onChange={setEmail}
-              error={fieldErrors.email}
-              required
-              autoComplete="email"
-            />
-            <FormField
-              label="Contraseña"
-              name="password"
-              type="password"
-              value={password}
-              onChange={setPassword}
-              error={fieldErrors.password}
-              required
-              autoComplete="new-password"
-            />
+
+            <p className="border-t pt-4 text-sm font-medium">Tu cuenta de administrador</p>
+            <AccountFields values={account} onChange={setAccount} errors={fieldErrors} />
 
             {formError && (
               <Alert variant="destructive">
@@ -129,7 +100,7 @@ export default function SignupPage() {
             )}
 
             <Button type="submit" disabled={submitting} className="w-full">
-              {submitting ? "Creando cuenta…" : "Crear cuenta"}
+              {submitting ? "Creando empresa…" : "Crear empresa"}
             </Button>
           </form>
 
@@ -138,6 +109,9 @@ export default function SignupPage() {
             <Link href="/login" className="font-medium text-foreground hover:underline">
               Inicia sesión
             </Link>
+          </p>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            ¿Quieres reservar un viaje? Pide a tu empresa de transporte su link de registro.
           </p>
         </CardContent>
       </Card>

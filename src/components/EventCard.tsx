@@ -9,7 +9,8 @@ type EventCardProps = {
   event: EventResponse;
   passengerCount: number;
   priority?: boolean;
-  onTravel: () => void;
+  /** Omitted when the user can't book (no MY_BOOKINGS module): the card hides its "Viajar" button. */
+  onTravel?: () => void;
 };
 
 export default function EventCard({ event, passengerCount, priority, onTravel }: EventCardProps) {
@@ -56,12 +57,14 @@ export default function EventCard({ event, passengerCount, priority, onTravel }:
           </p>
         )}
       </CardContent>
-      <CardFooter>
-        <Button className="w-full" onClick={onTravel}>
-          <BusIcon data-icon="inline-start" />
-          Viajar
-        </Button>
-      </CardFooter>
+      {onTravel && (
+        <CardFooter>
+          <Button className="w-full" onClick={onTravel}>
+            <BusIcon data-icon="inline-start" />
+            Viajar
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 }

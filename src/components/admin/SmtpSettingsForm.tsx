@@ -182,6 +182,10 @@ function SmtpForm({
               />
               <FormField label="Nombre remitente" name="smtp-from-name" value={fromName} onChange={setFromName} error={fieldErrors.fromName} />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Todas las empresas envían desde este correo. Los correos de cada empresa llevan su nombre como remitente y
+              responden a su correo de contacto; el nombre de aquí se usa en los demás, como el de prueba.
+            </p>
 
             <div className="space-y-3 rounded-lg border p-3">
               <div className="flex items-center justify-between gap-4">

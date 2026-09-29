@@ -95,7 +95,7 @@ export default function ProfileDialog({ open, onOpenChange, profile, modules, on
             <legend className="mb-2 text-sm font-medium">Módulos habilitados</legend>
             {modulesLocked && (
               <p className="text-xs text-muted-foreground">
-                El perfil Administrador siempre tiene todos los módulos, para que nadie pierda acceso a este mantenedor.
+                El perfil Administrador siempre tiene todos los módulos de administración, para que nadie pierda acceso a este mantenedor.
               </p>
             )}
             <div className="grid gap-2 sm:grid-cols-2">

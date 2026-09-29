@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { BusIcon, ChevronDownIcon, LogOutIcon, UserIcon } from "lucide-react";
+import { BusIcon, ChevronDownIcon, LogOutIcon, ShieldIcon, UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,6 +17,10 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { homeFor, visibleNavItems } from "@/lib/modules";
 import { cn } from "@/lib/utils";
+
+const tabClass =
+  "flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
+const activeTabClass = "bg-muted font-medium text-foreground";
 
 type AppShellProps = {
   title: string;
@@ -34,6 +38,11 @@ export default function AppShell({ title, description, actions, children }: AppS
   if (!user) return null;
 
   const navItems = visibleNavItems(user.modules);
+  // Admin pages go in one dropdown so the bar fits; a lone admin page stays as a plain tab.
+  const adminItems = navItems.filter((item) => item.href.startsWith("/admin/"));
+  const groupAdmin = adminItems.length > 1;
+  const tabItems = groupAdmin ? navItems.filter((item) => !adminItems.includes(item)) : navItems;
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username;
 
   function signOut() {
@@ -45,29 +54,45 @@ export default function AppShell({ title, description, actions, children }: AppS
     <div className="flex flex-1 flex-col bg-zinc-50 font-sans dark:bg-black">
       <header className="border-b bg-background">
         <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-8">
-          <Link href={homeFor(user.modules)} className="flex items-center gap-2 font-semibold">
-            <BusIcon className="size-5" />
-            Viajes a eventos
+          <Link href={homeFor(user.modules)} className="flex min-w-0 items-center gap-2 font-semibold">
+            <BusIcon className="size-5 shrink-0" />
+            <span className="truncate">{user.company.name}</span>
           </Link>
 
           <nav aria-label="Módulos" className="order-last flex w-full gap-1 overflow-x-auto sm:order-none sm:w-auto sm:flex-1">
-            {navItems.map((item) => {
-              const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                    active && "bg-muted font-medium text-foreground"
-                  )}
-                >
-                  <item.icon className="size-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
+            {tabItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={isActive(item.href) ? "page" : undefined}
+                className={cn(tabClass, isActive(item.href) && activeTabClass)}
+              >
+                <item.icon className="size-4" />
+                {item.label}
+              </Link>
+            ))}
+
+            {groupAdmin && (
+              <DropdownMenu>
+                <DropdownMenuTrigger className={cn(tabClass, pathname.startsWith("/admin/") && activeTabClass)}>
+                  <ShieldIcon className="size-4" />
+                  Administración
+                  <ChevronDownIcon className="size-3.5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  {adminItems.map((item) => (
+                    <DropdownMenuItem
+                      key={item.href}
+                      onClick={() => router.push(item.href)}
+                      className={cn(isActive(item.href) && "bg-muted font-medium")}
+                    >
+                      <item.icon />
+                      {item.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </nav>
 
           <DropdownMenu>
@@ -80,6 +105,7 @@ export default function AppShell({ title, description, actions, children }: AppS
               <DropdownMenuGroup>
                 <DropdownMenuLabel>
                   <span className="block truncate font-medium text-foreground">{user.email}</span>
+                  <span className="block truncate text-xs">{user.company.name}</span>
                   <span className="text-xs">Perfil: {user.profile.name}</span>
                 </DropdownMenuLabel>
               </DropdownMenuGroup>

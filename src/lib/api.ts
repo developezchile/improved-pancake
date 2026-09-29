@@ -1,7 +1,23 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
 /** Mirrors org.viajeseventos.model.AppModule. */
-export type ModuleKey = "EVENTS" | "BOOKINGS" | "EVENT_ADMIN" | "USERS" | "PROFILES" | "SETTINGS";
+export type ModuleKey =
+  | "EVENTS"
+  | "MY_BOOKINGS"
+  | "BOOKINGS"
+  | "EVENT_ADMIN"
+  | "USERS"
+  | "COMPANY"
+  | "PROFILES"
+  | "SETTINGS"
+  | "COMPANIES";
+
+/** The transport company an account belongs to. */
+export type CompanyRef = {
+  id: number;
+  name: string;
+  slug: string;
+};
 
 export type ProfileRef = {
   id: number;
@@ -20,6 +36,7 @@ export type UserResponse = {
   emailVerified: boolean;
   createdAt: string | null;
   profile: ProfileRef;
+  company: CompanyRef;
 };
 
 /** The logged-in user: also the modules their profile grants, which drive navigation and page access. */
@@ -30,13 +47,40 @@ export type AuthResponse = {
   user: SessionUser;
 };
 
-export type RegisterPayload = {
+export type AccountPayload = {
   username: string;
   email: string;
   password: string;
   firstName?: string;
   lastName?: string;
   phone?: string;
+};
+
+/** A client signing up through their company's link: `company` is its slug. */
+export type RegisterPayload = AccountPayload & { company: string };
+
+/** A transport company signing itself up, with its first administrator. */
+export type RegisterCompanyPayload = AccountPayload & {
+  companyName: string;
+  /** Optional — derived from the name when omitted. */
+  companySlug?: string;
+};
+
+/** What the client registration page can see about a company before there's an account. */
+export type PublicCompany = { name: string; slug: string };
+
+export type CompanyResponse = CompanyRef & {
+  contactEmail: string | null;
+  active: boolean;
+  createdAt: string;
+};
+
+/** A company in the platform's list (COMPANIES module). */
+export type CompanyListing = CompanyResponse & { userCount: number; eventCount: number };
+
+export type CompanyPayload = {
+  name: string;
+  contactEmail?: string;
 };
 
 export type LoginPayload = {
@@ -248,6 +292,12 @@ export const authApi = {
   register: (payload: RegisterPayload) =>
     request<{ message: string }>("/auth/register", { method: "POST", body: JSON.stringify(payload) }),
 
+  registerCompany: (payload: RegisterCompanyPayload) =>
+    request<{ message: string; company: PublicCompany }>("/auth/register-company", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
   login: (payload: LoginPayload) =>
     request<AuthResponse>("/auth/login", { method: "POST", body: JSON.stringify(payload) }),
 
@@ -367,6 +417,25 @@ export const usersApi = {
 
   resendVerification: (id: number, token: string) =>
     request<{ message: string }>(`/users/${id}/resend-verification`, { method: "POST", headers: authHeader(token) }),
+};
+
+/** Companies: the public view of a registration link, the caller's own company (COMPANY module) and every company (COMPANIES module). */
+export const companiesApi = {
+  publicView: (slug: string) => request<PublicCompany>(`/companies/public/${encodeURIComponent(slug)}`),
+
+  mine: (token: string) => request<CompanyResponse>("/company", { headers: authHeader(token) }),
+
+  updateMine: (payload: CompanyPayload, token: string) =>
+    request<CompanyResponse>("/company", { method: "PUT", body: JSON.stringify(payload), headers: authHeader(token) }),
+
+  list: (token: string) => request<{ companies: CompanyListing[] }>("/companies", { headers: authHeader(token) }),
+
+  setActive: (id: number, active: boolean, token: string) =>
+    request<CompanyResponse>(`/companies/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ active }),
+      headers: authHeader(token),
+    }),
 };
 
 /** Outgoing mail (SMTP) — requires the SETTINGS module. */

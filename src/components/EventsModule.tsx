@@ -9,7 +9,8 @@ import { useAuth } from "@/lib/auth-context";
 import type { Passenger } from "@/lib/passengers";
 
 export default function EventsModule() {
-  const { token, user } = useAuth();
+  const { token, user, hasModule } = useAuth();
+  const canBook = hasModule("MY_BOOKINGS");
   const [events, setEvents] = useState<EventListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -90,7 +91,7 @@ export default function EventsModule() {
             event={event}
             passengerCount={event.myPassengerCount}
             priority={index < 3}
-            onTravel={() => openTravelDialog(event)}
+            onTravel={canBook ? () => openTravelDialog(event) : undefined}
           />
         ))}
       </div>
