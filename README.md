@@ -21,6 +21,7 @@ Necesita la API corriendo (`../api`, por defecto en `http://localhost:8080/api`;
 - **Login y registro:** inicio de sesión, registro con verificación de correo, recuperar y restablecer contraseña, y "Mi perfil" (datos de contacto y cambio de contraseña).
 - **Módulos por perfil:** la navegación (`src/lib/modules.ts`) muestra solo los módulos que habilita el perfil del usuario, y cada página se protege con `useRequireModule`. La API aplica la misma regla.
   - **Eventos** (`EVENTS`): lista los eventos próximos desde la API. El botón "Viajar" abre un modal para registrar uno o más pasajeros; el primero viene prellenado con los datos de la sesión, y la reserva se guarda en la API. Desde "Mis reservas" se ven las reservas propias y se pueden cancelar.
+  - **Gestión de eventos** (`EVENT_ADMIN`): crear, editar, activar/desactivar y eliminar eventos. Si la imagen viene de otro dominio, se muestra sin pasar por el optimizador de imágenes de Next.
   - **Reservas** (`BOOKINGS`): vista del operador con todos los pasajeros, filtro por evento y total por punto y hora de salida.
   - **Usuarios** (`USERS`): administradores y clientes. Permite crear cuentas, asignar un perfil y habilitar o deshabilitar.
   - **Perfiles** (`PROFILES`): mantenedor de perfiles, donde se habilitan los módulos de cada uno.
