@@ -77,8 +77,10 @@ export default function EventDialog({ open, onOpenChange, event, onSave }: Event
           <DialogTitle>{event ? "Editar evento" : "Nuevo evento"}</DialogTitle>
           {event && event.bookingCount > 0 && (
             <DialogDescription>
-              Tiene {event.bookingCount} reserva(s) con {event.confirmedPassengers} pasajero(s) confirmados. Los cambios de
-              fecha o lugar no se avisan automáticamente a los clientes.
+              Tiene {event.bookingCount} reserva{event.bookingCount === 1 ? "" : "s"} confirmada
+              {event.bookingCount === 1 ? "" : "s"} con {event.confirmedPassengers} pasajero
+              {event.confirmedPassengers === 1 ? "" : "s"}. Los cambios de fecha o lugar no se avisan automáticamente
+              a los clientes.
             </DialogDescription>
           )}
         </DialogHeader>

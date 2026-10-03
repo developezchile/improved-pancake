@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Viajes a eventos",
+  title: "Busconciertos",
   description: "Gestión de viajes en bus a eventos fuera de la ciudad",
 };
 

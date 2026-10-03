@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import FormField from "@/components/FormField";
 import { ApiError, authApi } from "@/lib/api";
-import { useAuth, useRedirectIfAuthenticated } from "@/lib/auth-context";
+import { safeNext, useAuth, useRedirectIfAuthenticated } from "@/lib/auth-context";
 import { homeFor } from "@/lib/modules";
 
 export default function LoginPage() {
@@ -23,7 +23,9 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
-  const { loading } = useRedirectIfAuthenticated();
+  // Where the visitor was headed before being asked to sign in — usually a booking page.
+  const next = safeNext(searchParams.get("next"));
+  const { loading } = useRedirectIfAuthenticated(next);
 
   const registered = searchParams.get("registered");
   const justRegistered = registered === "1" || registered === "company";
@@ -46,7 +48,7 @@ function LoginForm() {
     setSubmitting(true);
     try {
       const user = await login({ email, password });
-      router.push(homeFor(user.modules));
+      router.push(next ?? homeFor(user.modules));
     } catch (err) {
       if (err instanceof ApiError) {
         setFieldErrors(err.fieldErrors ?? {});
@@ -78,7 +80,9 @@ function LoginForm() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl">Iniciar sesión</CardTitle>
-          <CardDescription>Accede para ver eventos y reservar tu viaje en bus.</CardDescription>
+          <CardDescription>
+            {next ? "Ingresa para confirmar tu reserva." : "Accede para ver tus reservas y reservar tu viaje en bus."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {passwordReset && (
@@ -156,13 +160,19 @@ function LoginForm() {
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            ¿Tienes una empresa de transporte?{" "}
-            <Link href="/signup" className="font-medium text-foreground hover:underline">
-              Regístrala
+            ¿No tienes cuenta?{" "}
+            <Link
+              href={next ? `/registro?next=${encodeURIComponent(next)}` : "/registro"}
+              className="font-medium text-foreground hover:underline"
+            >
+              Créala aquí
             </Link>
           </p>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            ¿Quieres reservar un viaje? Crea tu cuenta con el link de registro de tu empresa de transporte.
+            ¿Tienes una empresa de transporte?{" "}
+            <Link href="/signup" className="hover:underline">
+              Regístrala
+            </Link>
           </p>
         </CardContent>
       </Card>

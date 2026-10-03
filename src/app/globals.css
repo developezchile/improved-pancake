@@ -128,3 +128,42 @@
     @apply font-sans;
   }
 }
+/**
+ * Impresión del manifiesto.
+ *
+ * El navegador imprime a papel o a PDF con el mismo diálogo, así que no hace falta una librería de
+ * PDF ni generarlo en el servidor: lo que se necesita es que la hoja salga como una hoja y no como
+ * una captura de la pantalla.
+ *
+ * Se oculta todo con `visibility` en vez de `display: none` sobre los ancestros, porque esconder a
+ * un padre esconde al hijo pase lo que pase — y el manifiesto vive dentro del shell de la
+ * aplicación. Con visibility, el nodo marcado vuelve a ser visible aunque sus padres no lo sean.
+ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #manifiesto-impreso,
+  #manifiesto-impreso * {
+    visibility: visible;
+  }
+
+  #manifiesto-impreso {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    padding: 0;
+    color: #000;
+    background: #fff;
+  }
+
+  /* Una parada no se parte entre dos hojas si cabe entera: el conductor lee por parada. */
+  .manifiesto-parada {
+    break-inside: avoid;
+  }
+
+  @page {
+    margin: 14mm;
+  }
+}

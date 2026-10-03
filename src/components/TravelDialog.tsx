@@ -6,8 +6,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import PassengerFields from "@/components/PassengerFields";
-import { ApiError, type BookingResponse, type EventResponse } from "@/lib/api";
-import { formatEventDates } from "@/lib/events";
+import PoliciesNotice from "@/components/PoliciesNotice";
+import { ApiError, type BookingResponse, type PoliciesResponse, type TripResponse } from "@/lib/api";
+import { formatClp, seatsLabel } from "@/lib/bookings";
+import { formatTripDateTime } from "@/lib/trips";
 import {
   createPassenger,
   normalizePassenger,
@@ -19,14 +21,28 @@ import {
 type TravelDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  event: EventResponse | null;
+  /** The departure being booked — null while the dialog is closed. */
+  trip: TripResponse | null;
   /** Prefills the first passenger — usually the person booking travels too. */
   contact?: { fullName?: string; phone?: string };
+  /** The company's terms, shown before confirming. Null while they're still loading. */
+  policies: PoliciesResponse | null;
   onConfirm: (passengers: Passenger[]) => Promise<BookingResponse>;
 };
 
-export default function TravelDialog({ open, onOpenChange, event, contact, onConfirm }: TravelDialogProps) {
-  const [passengers, setPassengers] = useState<Passenger[]>(() => [createPassenger(undefined, contact)]);
+export default function TravelDialog({
+  open,
+  onOpenChange,
+  trip,
+  contact,
+  policies,
+  onConfirm,
+}: TravelDialogProps) {
+  // With a single stop there's nothing to choose, so it comes preselected.
+  const defaultStopId = trip?.stops.length === 1 ? String(trip.stops[0].id) : "";
+  const [passengers, setPassengers] = useState<Passenger[]>(() => [
+    createPassenger(undefined, contact, defaultStopId),
+  ]);
   const [errors, setErrors] = useState<Record<string, PassengerErrors>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -44,8 +60,11 @@ export default function TravelDialog({ open, onOpenChange, event, contact, onCon
   }
 
   function addPassenger() {
-    // El nuevo pasajero hereda salida y retorno del último, que suele ser el mismo grupo.
-    setPassengers((current) => [...current, createPassenger(current[current.length - 1])]);
+    // El nuevo pasajero hereda parada y retorno del último, que suele ser el mismo grupo.
+    setPassengers((current) => [
+      ...current,
+      createPassenger(current[current.length - 1], undefined, defaultStopId),
+    ]);
   }
 
   function removePassenger(id: string) {
@@ -88,15 +107,26 @@ export default function TravelDialog({ open, onOpenChange, event, contact, onCon
   }
 
   const hasErrors = Object.values(errors).some((e) => Object.keys(e).length > 0);
+  // What the group costs, each passenger at the price of the stop they board at.
+  const total = trip
+    ? passengers.reduce(
+        // Aún no hay reserva, así que el precio sale de la parada elegida. Sin parada no hay
+        // precio que cobrar todavía.
+        (sum, p) => sum + (trip.stops.find((s) => String(s.id) === p.stopId)?.priceClp ?? 0),
+        0
+      )
+    : 0;
+  const overSeats = trip ? passengers.length > trip.seatsLeft : false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{confirmed ? "Viaje registrado" : "Viajar al evento"}</DialogTitle>
-          {event && (
+          {trip && (
             <DialogDescription>
-              {event.name} · {formatEventDates(event)} · {event.venue}, {event.commune}
+              {trip.event.name} · sale de {trip.originCommune} el {formatTripDateTime(trip.departureAt)} ·{" "}
+              {seatsLabel(trip)}
             </DialogDescription>
           )}
         </DialogHeader>
@@ -110,7 +140,7 @@ export default function TravelDialog({ open, onOpenChange, event, contact, onCon
                 {confirmed.passengers.length === 1
                   ? "se registró 1 pasajero."
                   : `se registraron ${confirmed.passengers.length} pasajeros.`}{" "}
-                Puedes verla en Mis reservas.
+                Te enviamos los detalles por correo. Puedes verla en Mis reservas.
               </AlertDescription>
             </Alert>
             <ul className="divide-y rounded-lg border">
@@ -119,7 +149,7 @@ export default function TravelDialog({ open, onOpenChange, event, contact, onCon
                   <p className="font-medium">{p.fullName}</p>
                   <p className="text-muted-foreground">{p.phone}</p>
                   <p className="text-muted-foreground">
-                    Sale de {p.departurePlace} a las {p.departureTime} · Retorna a {p.returnPlace}
+                    Sube en {p.departurePlace} a las {p.departureTime} · Retorna a {p.returnPlace}
                   </p>
                 </li>
               ))}
@@ -138,6 +168,7 @@ export default function TravelDialog({ open, onOpenChange, event, contact, onCon
                   key={passenger.id}
                   index={index}
                   passenger={passenger}
+                  stops={trip?.stops ?? []}
                   errors={errors[passenger.id] ?? {}}
                   canRemove={passengers.length > 1}
                   onChange={(patch) => updatePassenger(passenger.id, patch)}
@@ -146,10 +177,26 @@ export default function TravelDialog({ open, onOpenChange, event, contact, onCon
               ))}
             </div>
 
-            <Button type="button" variant="outline" className="w-full" onClick={addPassenger}>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={addPassenger}
+              disabled={!!trip && passengers.length >= trip.seatsLeft}
+            >
               <PlusIcon data-icon="inline-start" />
               Agregar pasajero
             </Button>
+
+            <PoliciesNotice policies={policies} />
+
+            {overSeats && (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  {trip && seatsLabel(trip)} en esta salida: quita pasajeros para poder reservar.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {hasErrors && (
               <Alert variant="destructive">
@@ -166,11 +213,12 @@ export default function TravelDialog({ open, onOpenChange, event, contact, onCon
             <DialogFooter className="items-center">
               <p className="text-muted-foreground sm:mr-auto">
                 {passengers.length === 1 ? "1 pasajero" : `${passengers.length} pasajeros`}
+                {total > 0 && <> · total {formatClp(total)}</>}
               </p>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={submitting}>
+              <Button type="submit" disabled={submitting || overSeats}>
                 {submitting ? "Registrando…" : "Confirmar viaje"}
               </Button>
             </DialogFooter>

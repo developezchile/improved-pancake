@@ -26,7 +26,27 @@ export function formatDateTime(isoDateTime: string) {
 }
 
 /** Only PuntoTicket's CDN is allowed in next.config's images.remotePatterns; admin-entered URLs
- *  from anywhere else are shown as-is instead of going through the image optimizer. */
+ *  from anywhere else are shown as-is instead of going through the image optimizer. Las dos rutas
+ *  tienen que coincidir con los remotePatterns, o el optimizador responde 400. */
+const OPTIMIZABLE_PREFIXES = [
+  "https://static.ptocdn.net/images/eventos/",
+  "https://static.ptocdn.net/resources/images/",
+];
+
 export function isOptimizableImage(url: string) {
-  return url.startsWith("https://static.ptocdn.net/images/eventos/");
+  return OPTIMIZABLE_PREFIXES.some((prefix) => url.startsWith(prefix));
+}
+
+/** Cómo se llama cada ticketera, para la etiqueta del evento. Espejo de `importer/ticketeras.py`. */
+const SOURCE_LABELS: Record<string, string> = {
+  puntoticket: "PuntoTicket",
+  ticketmaster: "Ticketmaster",
+  passline: "Passline",
+  ticketplus: "Ticketplus",
+};
+
+/** El nombre de la ticketera de origen, o null si el evento se cargó a mano (no se etiqueta). */
+export function sourceLabel(source: string | null | undefined) {
+  if (!source) return null;
+  return SOURCE_LABELS[source] ?? source;
 }

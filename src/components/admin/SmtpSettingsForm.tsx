@@ -75,7 +75,7 @@ function SmtpForm({
   const [password, setPassword] = useState("");
   const [startTls, setStartTls] = useState(settings.startTls);
   const [fromAddress, setFromAddress] = useState(settings.fromAddress ?? "");
-  const [fromName, setFromName] = useState(settings.fromName ?? "Viajes a Eventos");
+  const [fromName, setFromName] = useState(settings.fromName ?? "Busconciertos");
   const [enabled, setEnabled] = useState(settings.enabled);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saveFeedback, setSaveFeedback] = useState<Feedback>(null);

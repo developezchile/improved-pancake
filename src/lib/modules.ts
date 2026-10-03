@@ -2,21 +2,43 @@ import {
   Building2Icon,
   BuildingIcon,
   BusIcon,
+  BusFrontIcon,
   CalendarCogIcon,
+  ClipboardCheckIcon,
   ClipboardListIcon,
+  RouteIcon,
   SettingsIcon,
   ShieldCheckIcon,
+  StarIcon,
   TicketIcon,
   UsersIcon,
   type LucideIcon,
 } from "lucide-react";
 import type { ModuleKey } from "./api";
 
+/**
+ * How the admin pages are grouped in the menu. Six flat entries read as six unrelated jobs, when
+ * three of them are one flow — un evento se publica, un recorrido lo lleva, una salida lo vende.
+ * The groups say which is which.
+ */
+export type NavGroup = "CATALOG" | "CLIENTS" | "COMPANY";
+
+export const NAV_GROUP_LABELS: Record<NavGroup, string> = {
+  CATALOG: "Lo que publicas",
+  CLIENTS: "Tus clientes",
+  COMPANY: "Tu empresa",
+};
+
+/** The order the groups appear in — the order of the flow, not of the modules. */
+export const NAV_GROUPS: NavGroup[] = ["CATALOG", "CLIENTS", "COMPANY"];
+
 export type NavItem = {
   module: ModuleKey;
   label: string;
   href: string;
   icon: LucideIcon;
+  /** Which section of the admin menu it belongs to; absent for the pages outside that menu. */
+  group?: NavGroup;
   /** Page, route and module stay in place, but it's left out of the navigation and its URL redirects home. */
   hidden?: boolean;
 };
@@ -30,9 +52,15 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { module: "EVENTS", label: "Eventos", href: "/", icon: BusIcon },
   { module: "MY_BOOKINGS", label: "Mis reservas", href: "/mis-reservas", icon: TicketIcon },
-  { module: "BOOKINGS", label: "Reservas", href: "/admin/reservas", icon: ClipboardListIcon },
-  { module: "EVENT_ADMIN", label: "Gestión de eventos", href: "/admin/eventos", icon: CalendarCogIcon },
-  { module: "USERS", label: "Usuarios", href: "/admin/usuarios", icon: UsersIcon },
+  // El orden dentro de "Lo que publicas" es el del flujo: el evento es el qué, el recorrido el
+  // cómo, y la salida los junta en una fecha.
+  { module: "EVENT_ADMIN", label: "Gestión de eventos", href: "/admin/eventos", icon: CalendarCogIcon, group: "CATALOG" },
+  { module: "FARES", label: "Recorridos y tarifas", href: "/admin/tarifas", icon: RouteIcon, group: "CATALOG" },
+  { module: "TRIP_ADMIN", label: "Salidas", href: "/admin/salidas", icon: BusFrontIcon, group: "CATALOG" },
+  { module: "BOOKINGS", label: "Reservas", href: "/admin/reservas", icon: ClipboardListIcon, group: "CLIENTS" },
+  { module: "REVIEWS", label: "Reseñas", href: "/admin/resenas", icon: StarIcon, group: "CLIENTS" },
+  { module: "BOARDING", label: "Embarque", href: "/embarque", icon: ClipboardCheckIcon },
+  { module: "USERS", label: "Usuarios", href: "/admin/usuarios", icon: UsersIcon, group: "COMPANY" },
   // Hidden for now (Mi empresa, Empresas, Perfiles, Configuración): a super admin will get these
   // pages in a later version.
   { module: "COMPANY", label: "Mi empresa", href: "/admin/empresa", icon: BuildingIcon, hidden: true },
@@ -46,6 +74,10 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   MY_BOOKINGS: "Mis reservas",
   BOOKINGS: "Reservas",
   EVENT_ADMIN: "Gestión de eventos",
+  TRIP_ADMIN: "Salidas",
+  FARES: "Recorridos y tarifas",
+  BOARDING: "Embarque",
+  REVIEWS: "Reseñas",
   USERS: "Usuarios",
   COMPANY: "Mi empresa",
   PROFILES: "Perfiles",

@@ -8,18 +8,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import BookingStatusBadge from "@/components/BookingStatusBadge";
-import { ApiError, bookingsAdminApi, type BookingResponse, type EventResponse } from "@/lib/api";
+import { ApiError, bookingsAdminApi, type BookingResponse, type TripResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { formatEventDates } from "@/lib/events";
+import { formatClp } from "@/lib/bookings";
+import { formatTripDateTime } from "@/lib/trips";
 
-const ALL_EVENTS = "all";
+const ALL_TRIPS = "all";
 
-/** Operator view (BOOKINGS module): every passenger, filterable by event, with a per-pickup summary. */
+/**
+ * Operator view (BOOKINGS module): every passenger, filterable by departure, with a per-stop
+ * summary — which is the list the driver actually needs, now that stops are the operator's own
+ * rather than whatever each passenger typed.
+ */
 export default function BookingsOverview() {
   const { token } = useAuth();
-  const [events, setEvents] = useState<EventResponse[]>([]);
+  const [trips, setTrips] = useState<TripResponse[]>([]);
   const [bookings, setBookings] = useState<BookingResponse[]>([]);
-  const [eventFilter, setEventFilter] = useState<string>(ALL_EVENTS);
+  const [tripFilter, setTripFilter] = useState<string>(ALL_TRIPS);
   const [showCancelled, setShowCancelled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -30,13 +35,13 @@ export default function BookingsOverview() {
     async function load() {
       if (!token) return;
       try {
-        const eventId = eventFilter === ALL_EVENTS ? null : Number(eventFilter);
-        const [eventsRes, bookingsRes] = await Promise.all([
-          bookingsAdminApi.events(token),
-          bookingsAdminApi.list(eventId, token),
+        const tripId = tripFilter === ALL_TRIPS ? null : Number(tripFilter);
+        const [tripsRes, bookingsRes] = await Promise.all([
+          bookingsAdminApi.trips(token),
+          bookingsAdminApi.list(tripId, token),
         ]);
         if (cancelled) return;
-        setEvents(eventsRes.events);
+        setTrips(tripsRes.trips);
         setBookings(bookingsRes.bookings);
         setLoadError(null);
       } catch (err) {
@@ -50,7 +55,7 @@ export default function BookingsOverview() {
     return () => {
       cancelled = true;
     };
-  }, [token, eventFilter]);
+  }, [token, tripFilter]);
 
   const confirmed = useMemo(() => bookings.filter((b) => b.status === "CONFIRMED"), [bookings]);
   const visible = showCancelled ? bookings : confirmed;
@@ -70,20 +75,35 @@ export default function BookingsOverview() {
   }, [confirmed]);
 
   const totalPassengers = confirmed.reduce((sum, b) => sum + b.passengers.length, 0);
-  const eventItems = [
-    { value: ALL_EVENTS, label: "Todos los eventos" },
-    ...events.map((e) => ({ value: String(e.id), label: e.name })),
+  const tripItems = [
+    { value: ALL_TRIPS, label: "Todas las salidas" },
+    ...trips.map((t) => ({
+      value: String(t.id),
+      label: `${t.event.name} — ${t.originCommune}, ${formatTripDateTime(t.departureAt)}`,
+    })),
   ];
+  const selectedTrip = tripFilter === ALL_TRIPS ? null : trips.find((t) => String(t.id) === tripFilter) ?? null;
+  // What the departure has collected, at the price of the stop each passenger boards at.
+  const revenue = selectedTrip
+    ? confirmed.reduce(
+        (sum, b) =>
+          sum +
+          // Lo que cada pasajero pagó, congelado al reservar — no lo que su parada cobra hoy.
+          // Si la tarifa del recorrido cambió después, esta reserva sigue valiendo lo suyo.
+          b.passengers.reduce((acc, p) => acc + p.priceClp, 0),
+        0
+      )
+    : 0;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-4">
-        <Select items={eventItems} value={eventFilter} onValueChange={(v) => setEventFilter(v ?? ALL_EVENTS)}>
-          <SelectTrigger className="w-full sm:w-80" aria-label="Filtrar por evento">
+        <Select items={tripItems} value={tripFilter} onValueChange={(v) => setTripFilter(v ?? ALL_TRIPS)}>
+          <SelectTrigger className="w-full sm:w-96" aria-label="Filtrar por salida">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {eventItems.map((item) => (
+            {tripItems.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 {item.label}
               </SelectItem>
@@ -111,8 +131,20 @@ export default function BookingsOverview() {
         </Card>
         <Card size="sm">
           <CardHeader>
-            <CardDescription>Reservas confirmadas</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">{loading ? "—" : confirmed.length}</CardTitle>
+            <CardDescription>
+              {selectedTrip ? `Asientos (de ${selectedTrip.seatsTotal})` : "Reservas confirmadas"}
+            </CardDescription>
+            <CardTitle className="text-2xl tabular-nums">
+              {loading ? "—" : selectedTrip ? `${totalPassengers} / ${selectedTrip.seatsTotal}` : confirmed.length}
+            </CardTitle>
+            {selectedTrip && (
+              <CardDescription>
+                {selectedTrip.seatsToQuorum > 0
+                  ? `Faltan ${selectedTrip.seatsToQuorum} para el mínimo de ${selectedTrip.minSeats}`
+                  : "Mínimo alcanzado"}
+                {revenue > 0 && ` · recaudado ${formatClp(revenue)}`}
+              </CardDescription>
+            )}
           </CardHeader>
         </Card>
         <Card size="sm">
@@ -145,7 +177,7 @@ export default function BookingsOverview() {
               <TableHead className="pl-4">Pasajero</TableHead>
               <TableHead>Salida</TableHead>
               <TableHead>Retorno</TableHead>
-              {eventFilter === ALL_EVENTS && <TableHead>Evento</TableHead>}
+              {tripFilter === ALL_TRIPS && <TableHead>Salida</TableHead>}
               <TableHead className="pr-4">Reserva</TableHead>
             </TableRow>
           </TableHeader>
@@ -153,7 +185,7 @@ export default function BookingsOverview() {
             {!loading && visible.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                  No hay reservas{eventFilter === ALL_EVENTS ? "" : " para este evento"}.
+                  No hay reservas{tripFilter === ALL_TRIPS ? "" : " para esta salida"}.
                 </TableCell>
               </TableRow>
             )}
@@ -169,10 +201,12 @@ export default function BookingsOverview() {
                     <div className="text-xs text-muted-foreground">{p.departureTime}</div>
                   </TableCell>
                   <TableCell>{p.returnPlace}</TableCell>
-                  {eventFilter === ALL_EVENTS && (
+                  {tripFilter === ALL_TRIPS && (
                     <TableCell>
-                      <div>{booking.event.name}</div>
-                      <div className="text-xs text-muted-foreground">{formatEventDates(booking.event)}</div>
+                      <div>{booking.trip.event.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {booking.trip.originCommune} · {formatTripDateTime(booking.trip.departureAt)}
+                      </div>
                     </TableCell>
                   )}
                   <TableCell className="pr-4">

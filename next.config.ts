@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
         hostname: "static.ptocdn.net",
         pathname: "/images/eventos/**",
       },
+      {
+        // Algunos afiches de PuntoTicket viven acá y no en /images/eventos (los trae así su API).
+        protocol: "https",
+        hostname: "static.ptocdn.net",
+        pathname: "/resources/images/**",
+      },
     ],
   },
 };

@@ -9,6 +9,8 @@ type FormFieldProps = {
   value: string;
   onChange: (value: string) => void;
   error?: string;
+  /** A line under the field explaining what it does. Hidden while an error is showing. */
+  hint?: string;
   required?: boolean;
   autoComplete?: string;
   placeholder?: string;
@@ -22,6 +24,7 @@ export default function FormField({
   value,
   onChange,
   error,
+  hint,
   required,
   autoComplete,
   placeholder,
@@ -42,7 +45,11 @@ export default function FormField({
         inputMode={inputMode}
         aria-invalid={!!error}
       />
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error ? (
+        <p className="text-xs text-destructive">{error}</p>
+      ) : (
+        hint && <p className="text-xs text-muted-foreground">{hint}</p>
+      )}
     </div>
   );
 }
